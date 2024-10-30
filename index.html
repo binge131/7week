@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Drawing Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: #ffffff;
+            font-family: 'NeoDunggeunmoPro-Regular';
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin: 10px 0;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px;
+        }
+        .controls input[type="file"],
+        .controls input[type="range"],
+        .controls input[type="color"],
+        .controls button {
+            font-size: 1rem;
+        }
+        .canvas-container {
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <h1> Choose Your Drawing Tool </h1>
+    <div class="controls">
+        <input type="file" id="uploadImage" accept="image/png" />
+        <label>Size: <input type="range" id="sizeSlider" min="20" max="200" value="50" /></label>
+        <label>Opacity: <input type="range" id="opacitySlider" min="0" max="100" value="100" /></label>
+        <label>Color: <input type="color" id="colorPicker" value="#00ff40" /></label>
+        <button id="clearCanvasButton">Clear</button>
+        <button id="saveCanvasButton">Save</button>
+    </div>
+    <div class="canvas-container">
+        <canvas id="drawingCanvas"></canvas>
+    </div>
+
+    <script>
+        const uploadImage = document.getElementById("uploadImage");
+        const sizeSlider = document.getElementById("sizeSlider");
+        const opacitySlider = document.getElementById("opacitySlider");
+        const colorPicker = document.getElementById("colorPicker");
+        const canvas = document.getElementById("drawingCanvas");
+        const ctx = canvas.getContext("2d");
+        const clearCanvasButton = document.getElementById("clearCanvasButton");
+        const saveCanvasButton = document.getElementById("saveCanvasButton");
+
+        let customImage = null;
+        let customImageSize = 50;
+        let customImageColor = "#0090B4";
+        let drawing = false;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        uploadImage.addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    customImage = new Image();
+                    customImage.src = reader.result;
+                    customImage.onload = () => applyColorToImage();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        sizeSlider.addEventListener("input", () => {
+            customImageSize = sizeSlider.value;
+        });
+
+        opacitySlider.addEventListener("input", () => {
+            if (customImage) {
+                applyColorToImage(); // 투명도 조절 시 이미지 색상 다시 적용
+            }
+        });
+
+        colorPicker.addEventListener("input", () => {
+            customImageColor = colorPicker.value;
+            if (customImage) applyColorToImage();
+        });
+
+        canvas.addEventListener("mousedown", () => (drawing = true));
+        canvas.addEventListener("mouseup", () => (drawing = false));
+        canvas.addEventListener("mousemove", (event) => {
+            if (drawing && customImage) {
+                ctx.globalAlpha = opacitySlider.value / 100; // 현재 투명도 적용
+                ctx.drawImage(customImage, event.clientX, event.clientY, customImageSize, customImageSize);
+                ctx.globalAlpha = 1; // 기본 불투명도로 되돌리기
+            }
+        });
+
+        clearCanvasButton.addEventListener("click", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        saveCanvasButton.addEventListener("click", () => {
+            const bgColor = prompt("Enter background color (hex or name, e.g., #FFFFFF or white):", "#000000");
+            if (bgColor) {
+                const tempCanvas = document.createElement("canvas");
+                const tempCtx = tempCanvas.getContext("2d");
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+
+                // 배경색 설정
+                tempCtx.fillStyle = bgColor;
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.drawImage(canvas, 0, 0);
+
+                const link = document.createElement("a");
+                link.href = tempCanvas.toDataURL("image/png");
+                link.download = "drawing.png";
+                link.click();
+            }
+        });
+
+        function applyColorToImage() {
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = customImage.width;
+            tempCanvas.height = customImage.height;
+            const tempCtx = tempCanvas.getContext("2d");
+
+            tempCtx.drawImage(customImage, 0, 0);
+            tempCtx.globalCompositeOperation = "source-in";
+            tempCtx.fillStyle = customImageColor;
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // 투명도 적용
+            const opacityValue = opacitySlider.value / 100;
+            tempCtx.globalAlpha = opacityValue;
+
+            customImage.src = tempCanvas.toDataURL();
+        }
+    </script>
+</body>
+</html>
